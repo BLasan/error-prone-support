@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# This script is not meant to be invoked manually, instead it should be invoked
+# through one of the integration test scripts such as the metrics or checkstyle one.
 
 set -e -u -o pipefail
 
@@ -7,8 +9,7 @@ error_prone_support_root="${integration_test_root}/.."
 repos_root="${integration_test_root}/.repos"
 
 if [ "${#}" -ne 10 ]; then
-  >&2 echo "Usage $(basename "${0}") <test-name> <project> <repository> <revision> <build-flags> <patch-flags> <validation-ep-flags> <validation-mvn-flags> <do-sync> <report-directory>"
-
+  >&2 echo "Usage $(basename "${0}") [TestName] [Project] [Repository] [Revision] [BuildFlags] [PatchFlags] [ValidationEpFlags] [ValidationMvnFlags] [DoSync] [ReportDirectory]"
   exit 1
 fi
 
