@@ -719,6 +719,27 @@ final class ReactorRules {
   }
 
   /**
+   * Prefer {@link Mono#map(Function)} over alternatives that unnecessarily create and collect a
+   * {@link Flux}.
+   */
+  // XXX: This rule assumes that any matched `Collector` does not filter or reorder elements after
+  // application of the matched `Function`.
+  // XXX: The `function` parameter is not matched, unless `I` is changed to `Iterable<? extends S>`,
+  // which would make the rule incorrect.
+  static final class MonoMapToIterable<T, S, I extends Iterable<? extends S>> {
+    @BeforeTemplate
+    Mono<I> before(
+        Mono<T> mono, Function<? super T, ? extends I> function, Collector<S, ?, I> collector) {
+      return mono.flatMapIterable(function).collect(collector);
+    }
+
+    @AfterTemplate
+    Mono<I> after(Mono<T> mono, Function<? super T, ? extends I> function) {
+      return mono.map(function);
+    }
+  }
+
+  /**
    * Prefer {@link Flux#map(Function)} over alternatives that unnecessarily require an inner
    * subscription.
    */
@@ -1576,6 +1597,26 @@ final class ReactorRules {
     @UseImportPolicy(STATIC_IMPORT_ALWAYS)
     Mono<ImmutableSet<T>> after(Flux<T> flux) {
       return flux.collect(toImmutableSet());
+    }
+  }
+
+  /**
+   * Prefer {@link Flux#singleOrEmpty()} over {@link Flux#next()} when the {@link Flux} emits at
+   * most one element.
+   */
+  // XXX: This is a special case of a more general rule. Consider introducing an Error Prone check
+  // for this.
+  // XXX: The `transformer` parameter isn't matched, unless the signature is changed to `? extends
+  // Publisher<S>`, which would make the rule incorrect.
+  static final class FluxTransformToMonoSingleOrEmpty<T, S> {
+    @BeforeTemplate
+    Mono<S> before(Flux<T> flux, Function<? super Flux<T>, ? extends Mono<S>> transformer) {
+      return flux.transform(transformer).next();
+    }
+
+    @AfterTemplate
+    Mono<S> after(Flux<T> flux, Function<? super Flux<T>, ? extends Mono<S>> transformer) {
+      return flux.transform(transformer).singleOrEmpty();
     }
   }
 

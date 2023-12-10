@@ -13,8 +13,10 @@ import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -253,6 +255,14 @@ final class ReactorRulesTest implements RefasterRuleCollectionTestCase {
 
   ImmutableSet<Mono<String>> testMonoMap() {
     return ImmutableSet.of(Mono.just("foo").map(s -> s), Mono.just("bar").map(s -> s.substring(1)));
+  }
+
+  ImmutableSet<Mono<Iterable<String>>> testMonoMapToIterable() {
+    return ImmutableSet.of(
+        Mono.just("foo").map(ImmutableSet::of),
+        Mono.just("bar").map(ImmutableSortedSet::of),
+        Mono.just("baz").map(ImmutableSet::of),
+        Mono.just("qux").map(Arrays::asList));
   }
 
   ImmutableSet<Flux<Integer>> testFluxMap() {
@@ -512,6 +522,10 @@ final class ReactorRulesTest implements RefasterRuleCollectionTestCase {
 
   Mono<ImmutableSet<Integer>> testFluxCollectToImmutableSet() {
     return Flux.just(1).collect(toImmutableSet());
+  }
+
+  Mono<String> testFluxTransformToMonoSingleOrEmpty() {
+    return Flux.just("foo").transform(Flux::next).singleOrEmpty();
   }
 
   ImmutableSet<Context> testContextEmpty() {
