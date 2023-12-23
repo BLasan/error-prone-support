@@ -47,7 +47,7 @@ public final class BugPatternExtractor implements Extractor<BugPatternDocumentat
     }
 
     return Optional.of(
-        new AutoValue_BugPatternExtractor_BugPatternDocumentation(
+        BugPatternDocumentation.create(
             state.getPath().getCompilationUnit().getSourceFile().toUri(),
             symbol.getQualifiedName().toString(),
             annotation.name().isEmpty() ? tree.getSimpleName().toString() : annotation.name(),
@@ -93,12 +93,35 @@ public final class BugPatternExtractor implements Extractor<BugPatternDocumentat
     return (T) value;
   }
 
-  // XXX: Here and below: Test (serialization round trips. And given that the only "production"
-  // reader of the serialized data is also defined in this package, perhaps we don't need to
-  // validate the serialized format.
   @AutoValue
   @JsonDeserialize(as = AutoValue_BugPatternExtractor_BugPatternDocumentation.class)
   abstract static class BugPatternDocumentation {
+    static BugPatternDocumentation create(
+        URI source,
+        String fullyQualifiedName,
+        String name,
+        ImmutableList<String> altNames,
+        String link,
+        ImmutableList<String> tags,
+        String summary,
+        String explanation,
+        SeverityLevel severityLevel,
+        boolean canDisable,
+        ImmutableList<String> suppressionAnnotations) {
+      return new AutoValue_BugPatternExtractor_BugPatternDocumentation(
+          source,
+          fullyQualifiedName,
+          name,
+          altNames,
+          link,
+          tags,
+          summary,
+          explanation,
+          severityLevel,
+          canDisable,
+          suppressionAnnotations);
+    }
+
     abstract URI source();
 
     abstract String fullyQualifiedName();

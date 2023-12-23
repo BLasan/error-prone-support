@@ -77,7 +77,7 @@ public final class BugPatternTestExtractor implements Extractor<TestCases> {
                 "com.google.errorprone.CompilationTestHelper",
                 "com.google.errorprone.BugCheckerRefactoringTestHelper")
             .named("newInstance")
-            .withParameters("java.lang.Class", "java.lang.Class");
+            .withParameters(Class.class.getCanonicalName(), Class.class.getCanonicalName());
     private static final Matcher<ExpressionTree> IDENTIFICATION_SOURCE_LINES =
         instanceMethod()
             .onDescendantOf("com.google.errorprone.CompilationTestHelper")
@@ -207,12 +207,13 @@ public final class BugPatternTestExtractor implements Extractor<TestCases> {
     }
   }
 
-  // XXX: Here and below: Test (serialization round trips. And given that the only "production"
-  // reader of the serialized data is also defined in this package, perhaps we don't need to
-  // validate the serialized format.
   @AutoValue
   @JsonDeserialize(as = AutoValue_BugPatternTestExtractor_TestCases.class)
   abstract static class TestCases {
+    static TestCases create(URI source, String testClass, ImmutableList<TestCase> testCases) {
+      return new AutoValue_BugPatternTestExtractor_TestCases(source, testClass, testCases);
+    }
+
     abstract URI source();
 
     abstract String testClass();
@@ -223,6 +224,10 @@ public final class BugPatternTestExtractor implements Extractor<TestCases> {
   @AutoValue
   @JsonDeserialize(as = AutoValue_BugPatternTestExtractor_TestCase.class)
   abstract static class TestCase {
+    static TestCase create(String classUnderTest, ImmutableList<TestEntry> entries) {
+      return new AutoValue_BugPatternTestExtractor_TestCase(classUnderTest, entries);
+    }
+
     abstract String classUnderTest();
 
     abstract ImmutableList<TestEntry> entries();
@@ -248,6 +253,10 @@ public final class BugPatternTestExtractor implements Extractor<TestCases> {
 
   @AutoValue
   abstract static class IdentificationTestEntry implements TestEntry {
+    static IdentificationTestEntry create(String path, String code) {
+      return new AutoValue_BugPatternTestExtractor_IdentificationTestEntry(path, code);
+    }
+
     @JsonProperty
     @Override
     public final TestType type() {
@@ -259,6 +268,10 @@ public final class BugPatternTestExtractor implements Extractor<TestCases> {
 
   @AutoValue
   abstract static class ReplacementTestEntry implements TestEntry {
+    static ReplacementTestEntry create(String path, String input, String output) {
+      return new AutoValue_BugPatternTestExtractor_ReplacementTestEntry(path, input, output);
+    }
+
     @JsonProperty
     @Override
     public final TestType type() {
