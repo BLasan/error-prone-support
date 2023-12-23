@@ -1,10 +1,12 @@
 {
+  "source": "file:///SingleFileBugCheckerRefactoringTestHelperTest.java",
   "testClass": "SingleFileBugCheckerRefactoringTestHelperTest",
   "testCases": [
     {
       "classUnderTest": "SingleFileBugCheckerRefactoringTestHelperTest.TestChecker",
       "entries": [
         {
+          "type": "REPLACEMENT",
           "path": "A.java",
           "input": "class A {}\n",
           "output": "class A { /* This is a change. */ }\n"

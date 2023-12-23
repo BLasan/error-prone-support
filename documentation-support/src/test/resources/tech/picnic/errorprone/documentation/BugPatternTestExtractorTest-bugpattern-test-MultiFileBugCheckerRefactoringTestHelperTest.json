@@ -1,15 +1,18 @@
 {
+  "source": "file:///MultiFileBugCheckerRefactoringTestHelperTest.java",
   "testClass": "MultiFileBugCheckerRefactoringTestHelperTest",
   "testCases": [
     {
       "classUnderTest": "MultiFileBugCheckerRefactoringTestHelperTest.TestChecker",
       "entries": [
         {
+          "type": "REPLACEMENT",
           "path": "A.java",
           "input": "class A {}\n",
           "output": "class A { /* This is a change. */ }\n"
         },
         {
+          "type": "REPLACEMENT",
           "path": "B.java",
           "input": "class B {}\n",
           "output": "class B { /* This is a change. */ }\n"

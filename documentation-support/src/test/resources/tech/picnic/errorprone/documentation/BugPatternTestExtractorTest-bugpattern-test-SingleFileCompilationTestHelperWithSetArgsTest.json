@@ -1,10 +1,12 @@
 {
+  "source": "file:///SingleFileCompilationTestHelperWithSetArgsTest.java",
   "testClass": "SingleFileCompilationTestHelperWithSetArgsTest",
   "testCases": [
     {
       "classUnderTest": "SingleFileCompilationTestHelperWithSetArgsTest.TestChecker",
       "entries": [
         {
+          "type": "IDENTIFICATION",
           "path": "A.java",
           "code": "// BUG: Diagnostic contains:\nclass A {}\n"
         }

@@ -4,6 +4,13 @@ import static com.google.errorprone.matchers.Matchers.instanceMethod;
 import static com.google.errorprone.matchers.method.MethodMatchers.staticMethod;
 import static java.util.function.Predicate.not;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.auto.service.AutoService;
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.ImmutableList;
@@ -15,6 +22,7 @@ import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.util.TreeScanner;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -52,7 +60,9 @@ public final class BugPatternTestExtractor implements Extractor<TestCases> {
         .map(
             tests ->
                 new AutoValue_BugPatternTestExtractor_TestCases(
-                    ASTHelpers.getSymbol(tree).className(), tests));
+                    state.getPath().getCompilationUnit().getSourceFile().toUri(),
+                    ASTHelpers.getSymbol(tree).className(),
+                    tests));
   }
 
   private static final class BugPatternTestCollector
@@ -67,7 +77,7 @@ public final class BugPatternTestExtractor implements Extractor<TestCases> {
                 "com.google.errorprone.CompilationTestHelper",
                 "com.google.errorprone.BugCheckerRefactoringTestHelper")
             .named("newInstance")
-            .withParameters(Class.class.getCanonicalName(), Class.class.getCanonicalName());
+            .withParameters("java.lang.Class", "java.lang.Class");
     private static final Matcher<ExpressionTree> IDENTIFICATION_SOURCE_LINES =
         instanceMethod()
             .onDescendantOf("com.google.errorprone.CompilationTestHelper")
@@ -197,33 +207,66 @@ public final class BugPatternTestExtractor implements Extractor<TestCases> {
     }
   }
 
+  // XXX: Here and below: Test (serialization round trips. And given that the only "production"
+  // reader of the serialized data is also defined in this package, perhaps we don't need to
+  // validate the serialized format.
   @AutoValue
+  @JsonDeserialize(as = AutoValue_BugPatternTestExtractor_TestCases.class)
   abstract static class TestCases {
+    abstract URI source();
+
     abstract String testClass();
 
     abstract ImmutableList<TestCase> testCases();
   }
 
   @AutoValue
+  @JsonDeserialize(as = AutoValue_BugPatternTestExtractor_TestCase.class)
   abstract static class TestCase {
     abstract String classUnderTest();
 
     abstract ImmutableList<TestEntry> entries();
   }
 
+  @JsonSubTypes({
+    @JsonSubTypes.Type(AutoValue_BugPatternTestExtractor_IdentificationTestEntry.class),
+    @JsonSubTypes.Type(AutoValue_BugPatternTestExtractor_ReplacementTestEntry.class)
+  })
+  @JsonTypeInfo(include = As.EXISTING_PROPERTY, property = "type", use = JsonTypeInfo.Id.DEDUCTION)
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonPropertyOrder("type")
   interface TestEntry {
+    TestType type();
+
     String path();
-  }
 
-  @AutoValue
-  abstract static class ReplacementTestEntry implements TestEntry {
-    abstract String input();
-
-    abstract String output();
+    enum TestType {
+      IDENTIFICATION,
+      REPLACEMENT
+    }
   }
 
   @AutoValue
   abstract static class IdentificationTestEntry implements TestEntry {
+    @JsonProperty
+    @Override
+    public final TestType type() {
+      return TestType.IDENTIFICATION;
+    }
+
     abstract String code();
+  }
+
+  @AutoValue
+  abstract static class ReplacementTestEntry implements TestEntry {
+    @JsonProperty
+    @Override
+    public final TestType type() {
+      return TestType.REPLACEMENT;
+    }
+
+    abstract String input();
+
+    abstract String output();
   }
 }

@@ -1,10 +1,12 @@
 {
+  "source": "file:///CompilationAndBugCheckerRefactoringTestHelpersWithCustomCheckerPackageAndNamesTest.java",
   "testClass": "pkg.CompilationAndBugCheckerRefactoringTestHelpersWithCustomCheckerPackageAndNamesTest",
   "testCases": [
     {
       "classUnderTest": "pkg.CompilationAndBugCheckerRefactoringTestHelpersWithCustomCheckerPackageAndNamesTest.CustomTestChecker",
       "entries": [
         {
+          "type": "IDENTIFICATION",
           "path": "A.java",
           "code": "// BUG: Diagnostic contains:\nclass A {}\n"
         }
@@ -14,6 +16,7 @@
       "classUnderTest": "pkg.CompilationAndBugCheckerRefactoringTestHelpersWithCustomCheckerPackageAndNamesTest.CustomTestChecker2",
       "entries": [
         {
+          "type": "REPLACEMENT",
           "path": "A.java",
           "input": "class A {}\n",
           "output": "class A { /* This is a change. */ }\n"
