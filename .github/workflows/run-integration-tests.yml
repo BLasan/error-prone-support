@@ -26,7 +26,7 @@ jobs:
       - name: Check out code and set up JDK and Maven
         uses: s4u/setup-maven-action@fa2c7e4517ed008b1f73e7e0195a9eecf5582cd4 # v1.11.0
         with:
-          checkout-ref: "refs/pull/${{ github.event.issue.number }}/head"
+          # checkout-ref: "refs/pull/${{ github.event.issue.number }}/head"
           java-version: 17.0.8
           java-distribution: temurin
           maven-version: 3.9.6
