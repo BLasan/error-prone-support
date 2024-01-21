@@ -84,6 +84,7 @@ public final class TypeMemberOrder extends BugChecker implements BugChecker.Clas
                 return isConstructor((MethodTree) tree) ? 5 : 6;
               case CLASS:
               case INTERFACE:
+              case ENUM:
                 return 7;
               default:
                 throw new VerifyException("Unexpected member kind: " + tree.getKind());
@@ -102,22 +103,40 @@ public final class TypeMemberOrder extends BugChecker implements BugChecker.Clas
 
   @Override
   public Description matchClass(ClassTree tree, VisitorState state) {
-    ImmutableList<TypeMember> typeMembers =
-        getTypeMembersWithComments(tree, state).stream()
-            .filter(typeMember -> shouldBeSorted(typeMember.tree()))
-            .collect(toImmutableList());
+    //    ImmutableList<TypeMember> typeMembers =
+    //        getTypeMembersWithComments(tree, state).stream()
+    //            .filter(typeMember -> canBeSorted(typeMember.tree()))
+    //            .collect(toImmutableList());
+    //
+    //    ImmutableList<TypeMember> sortedTypeMembers =
+    //        ImmutableList.sortedCopyOf(
+    //            comparing(TypeMember::tree, BY_PREFERRED_TYPE_MEMBER_ORDER), typeMembers);
+    //
+    //    if (typeMembers.equals(sortedTypeMembers)) {
+    //      return Description.NO_MATCH;
+    //    }
+    //
+    //    return buildDescription(tree)
+    //        .addFix(replaceTypeMembers(typeMembers, sortedTypeMembers, state))
+    //        .build();
+    ImmutableList<Tree> typeMemberTrees =
+        tree.getMembers().stream().filter(TypeMemberOrder::canBeSorted).collect(toImmutableList());
 
-    ImmutableList<TypeMember> sortedTypeMembers =
-        ImmutableList.sortedCopyOf(
-            comparing(TypeMember::tree, BY_PREFERRED_TYPE_MEMBER_ORDER), typeMembers);
+    ImmutableList<Tree> sortedTypeMemberTrees =
+        ImmutableList.sortedCopyOf(BY_PREFERRED_TYPE_MEMBER_ORDER, typeMemberTrees);
 
-    if (typeMembers.equals(sortedTypeMembers)) {
+    if (typeMemberTrees.equals(sortedTypeMemberTrees)) {
       return Description.NO_MATCH;
     }
 
-    return buildDescription(tree)
-        .addFix(replaceTypeMembers(typeMembers, sortedTypeMembers, state))
-        .build();
+    ImmutableList<TypeMember> sortedTypeMembers =
+        sortedTypeMemberTrees.stream()
+            .map(member -> getTypeMembersWithComments(tree, member, state))
+            .collect(toImmutableList());
+
+    SuggestedFix fix = replaceTypeMembers(typeMemberTrees, sortedTypeMembers, state);
+
+    return buildDescription(tree).addFix(fix).build();
   }
 
   private static boolean isStatic(VariableTree variableTree) {
@@ -133,7 +152,7 @@ public final class TypeMemberOrder extends BugChecker implements BugChecker.Clas
     return ASTHelpers.getSymbol(methodTree).isConstructor();
   }
 
-  private static boolean shouldBeSorted(Tree tree) {
+  private static boolean canBeSorted(Tree tree) {
     if (hasRecognizedSuppressWarnings(tree)) {
       return false;
     }
@@ -164,7 +183,7 @@ public final class TypeMemberOrder extends BugChecker implements BugChecker.Clas
   }
 
   private static SuggestedFix replaceTypeMembers(
-      ImmutableList<TypeMember> typeMembers,
+      ImmutableList<Tree> typeMembers,
       ImmutableList<TypeMember> replacementTypeMembers,
       VisitorState state) {
     return Streams.zip(
@@ -176,9 +195,9 @@ public final class TypeMemberOrder extends BugChecker implements BugChecker.Clas
   }
 
   private static SuggestedFix replaceTypeMember(
-      TypeMember original, TypeMember replacement, VisitorState state) {
+      Tree original, TypeMember replacement, VisitorState state) {
     /* Technically this check is not necessary, but it avoids redundant replacements. */
-    if (original.equals(replacement)) {
+    if (original.equals(replacement.tree())) {
       return SuggestedFix.emptyFix();
     }
 
@@ -188,18 +207,14 @@ public final class TypeMemberOrder extends BugChecker implements BugChecker.Clas
                 Stream.of(SourceCode.treeToString(replacement.tree(), state)))
             .collect(joining(System.lineSeparator()));
     return SuggestedFixes.replaceIncludingComments(
-        TreePath.getPath(state.getPath(), original.tree()), replacementSource, state);
+        TreePath.getPath(state.getPath(), original), replacementSource, state);
   }
 
   /** Returns the type's members with their comments. */
-  private static ImmutableList<TypeMember> getTypeMembersWithComments(
-      ClassTree tree, VisitorState state) {
-    return tree.getMembers().stream()
-        .map(
-            member ->
-                new AutoValue_TypeMemberOrder_TypeMember(
-                    member, getTypeMemberComments(tree, member, state)))
-        .collect(toImmutableList());
+  private static TypeMember getTypeMembersWithComments(
+      ClassTree tree, Tree member, VisitorState state) {
+    return new AutoValue_TypeMemberOrder_TypeMember(
+        member, getTypeMemberComments(tree, member, state));
   }
 
   private static ImmutableList<String> getTypeMemberComments(
