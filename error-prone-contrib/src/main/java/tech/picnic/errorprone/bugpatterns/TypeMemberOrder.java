@@ -40,21 +40,34 @@ import javax.lang.model.element.Modifier;
 import tech.picnic.errorprone.bugpatterns.util.SourceCode;
 
 /**
- * A {@link BugChecker} that flags types with non-standard member ordering.
+ * A {@link BugChecker} that flags classes with a non-canonical member order.
  *
- * <p>Type members should be ordered in a standard way, which is: static fields, non-static fields,
- * constructors and methods.
+ * <p>Class members should be ordered as follows:
+ *
+ * <ol>
+ *   <li>Static fields
+ *   <li>Instance fields
+ *   <li>Static initializer blocks
+ *   <li>Instance initializer blocks
+ *   <li>Constructors
+ *   <li>Methods
+ *   <li>Nested classes and interfaces
+ * </ol>
+ *
+ * @see <a
+ *     href="https://checkstyle.sourceforge.io/apidocs/com/puppycrawl/tools/checkstyle/checks/coding/DeclarationOrderCheck.html">Checkstyle's
+ *     {@code DeclarationOrderCheck}</a>
  */
 // XXX: Reference
 // https://checkstyle.sourceforge.io/apidocs/com/puppycrawl/tools/checkstyle/checks/coding/DeclarationOrderCheck.html
 @AutoService(BugChecker.class)
 @BugPattern(
     summary = "Type members should be ordered in a standard way",
-    link = BUG_PATTERNS_BASE_URL + "TypeMemberOrdering",
+    link = BUG_PATTERNS_BASE_URL + "TypeMemberOrder",
     linkType = CUSTOM,
     severity = WARNING,
     tags = STYLE)
-public final class TypeMemberOrdering extends BugChecker implements BugChecker.ClassTreeMatcher {
+public final class TypeMemberOrder extends BugChecker implements BugChecker.ClassTreeMatcher {
   private static final long serialVersionUID = 1L;
 
   // TODO: Copy should be sorted and comparator in-sync.
@@ -71,7 +84,7 @@ public final class TypeMemberOrdering extends BugChecker implements BugChecker.C
                 return isConstructor((MethodTree) tree) ? 5 : 6;
               case CLASS:
               case INTERFACE:
-                return isStatic((ClassTree) tree) ? 8 : 7;
+                return 7;
               default:
                 throw new VerifyException("Unexpected member kind: " + tree.getKind());
             }
@@ -82,10 +95,10 @@ public final class TypeMemberOrdering extends BugChecker implements BugChecker.C
    * member, this BugChecker will not sort it.
    */
   private static final ImmutableSet<String> RECOGNIZED_SUPPRESSIONS =
-      ImmutableSet.of("all", TypeMemberOrdering.class.getSimpleName());
+      ImmutableSet.of("all", TypeMemberOrder.class.getSimpleName());
 
-  /** Instantiates a new {@link TypeMemberOrdering} instance. */
-  public TypeMemberOrdering() {}
+  /** Instantiates a new {@link TypeMemberOrder} instance. */
+  public TypeMemberOrder() {}
 
   @Override
   public Description matchClass(ClassTree tree, VisitorState state) {
@@ -116,11 +129,6 @@ public final class TypeMemberOrdering extends BugChecker implements BugChecker.C
     return blockTree.isStatic();
   }
 
-  private static boolean isStatic(ClassTree classTree) {
-    Set<Modifier> modifiers = classTree.getModifiers().getFlags();
-    return modifiers.contains(Modifier.STATIC);
-  }
-
   private static boolean isConstructor(MethodTree methodTree) {
     return ASTHelpers.getSymbol(methodTree).isConstructor();
   }
@@ -129,7 +137,6 @@ public final class TypeMemberOrdering extends BugChecker implements BugChecker.C
     if (hasRecognizedSuppressWarnings(tree)) {
       return false;
     }
-    ;
     return tree instanceof VariableTree
         || (tree instanceof MethodTree && !ASTHelpers.isGeneratedConstructor((MethodTree) tree))
         || tree instanceof BlockTree
@@ -190,7 +197,7 @@ public final class TypeMemberOrdering extends BugChecker implements BugChecker.C
     return tree.getMembers().stream()
         .map(
             member ->
-                new AutoValue_TypeMemberOrdering_TypeMember(
+                new AutoValue_TypeMemberOrder_TypeMember(
                     member, getTypeMemberComments(tree, member, state)))
         .collect(toImmutableList());
   }
