@@ -30,7 +30,6 @@ import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
-import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.parser.Tokens.TokenKind;
 import com.sun.tools.javac.util.Position;
 import java.util.*;
@@ -93,6 +92,11 @@ public final class TypeMemberOrder extends BugChecker implements BugChecker.Clas
 
   @Override
   public Description matchClass(ClassTree tree, VisitorState state) {
+    if (!ImmutableSet.of(Tree.Kind.CLASS, Tree.Kind.INTERFACE, Tree.Kind.ENUM)
+        .contains(tree.getKind())) {
+      return Description.NO_MATCH;
+    }
+
     ImmutableList<Tree> sortableMembers =
         tree.getMembers().stream().filter(m -> canMove(m, state)).collect(toImmutableList());
 
@@ -117,26 +121,27 @@ public final class TypeMemberOrder extends BugChecker implements BugChecker.Clas
     return state.getEndPosition(tree) != Position.NOPOS && !isSuppressed(tree, state);
   }
 
-  private static int getBodyStartPos(ClassTree clazz, VisitorState state) {
+  private static int getBodyStartPos(ClassTree tree, VisitorState state) {
     CharSequence sourceCode = state.getSourceCode();
-    int classStart = ASTHelpers.getStartPosition(clazz);
-    int classEnd = state.getEndPosition(clazz);
+    int classStart = ASTHelpers.getStartPosition(tree);
+    int classEnd = state.getEndPosition(tree);
     if (sourceCode == null || classStart == Position.NOPOS || classEnd == Position.NOPOS) {
       return Position.NOPOS;
     }
 
     /*
-     * We return the source code position that follows the first left brace after the `class`
-     * keyword.
+     * We return the source code position that follows the first left brace or in the case of enums, the first semicolon.
      */
-    // XXX: !! Doesn't work for interfaces. How to make exhaustive? For records we'd even need
-    // special handling. (But maybe we should support only classes and interfaces for now? Enums
-    // have other considerations!)
+    // XXX: Questionable workaround for enums, consider handling some of the different kinds
+    // of types in different checkers.
     return ErrorProneTokens.getTokens(
             sourceCode.subSequence(classStart, classEnd).toString(), classStart, state.context)
         .stream()
-        .dropWhile(t -> t.kind() != TokenKind.CLASS)
-        .dropWhile(t -> t.kind() != TokenKind.LBRACE)
+        .dropWhile(
+            token ->
+                tree.getKind() == Tree.Kind.ENUM
+                    ? token.kind() != TokenKind.SEMI
+                    : token.kind() != TokenKind.LBRACE)
         .findFirst()
         .map(ErrorProneToken::endPos)
         .orElse(Position.NOPOS);
@@ -159,7 +164,11 @@ public final class TypeMemberOrder extends BugChecker implements BugChecker.Clas
     @Var int start = classBodyStart;
     for (Tree member : members) {
       int end = state.getEndPosition(member);
-      verify(end != Position.NOPOS && start < end, "Unexpected member end position");
+      if (start > end) {
+        // Ignore the ENUMS in enum types.
+        continue;
+      }
+      verify(end != Position.NOPOS, "Unexpected member end position");
       membersWithSource.add(new AutoValue_TypeMemberOrder_TypeMember(member, start, end));
       start = end;
     }
